@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offside — the football fine board</title>
+<meta name="description" content="A fine board for colleagues who cannot stop talking about football.">
+<link rel="preconnect" href="https://assets.storebrand.no" crossorigin>
+<link rel="preload" href="https://assets.storebrand.no/elements/web24/1.0.0/fonts/ba4768683a65efb0b694.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="https://assets.storebrand.no/elements/web24/1.0.0/fonts/bd126a772f887a6e1276.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="masthead">
+  <div class="wrap masthead__inner">
+    <a class="brand" href="#top">
+      <!-- interlocking ovals, after the Storebrand "link" symbol -->
+      <svg class="brand__mark" viewBox="0 0 48 48" aria-hidden="true">
+        <ellipse cx="18" cy="24" rx="15" ry="21" fill="none" stroke="#b20000" stroke-width="5"/>
+        <ellipse cx="30" cy="24" rx="15" ry="21" fill="none" stroke="#da291c" stroke-width="5"/>
+      </svg>
+      <span>
+        <span class="brand__name">Offside</span>
+        <span class="brand__sub">Fine board</span>
+      </span>
+    </a>
+    <nav class="mainnav" aria-label="Main">
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#rulebook">Rule book</a>
+      <a href="#report">Report</a>
+      <a href="#ledger">Ledger</a>
+    </nav>
+    <a class="btn btn--primary btn--sm" href="#report">Report an offence</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="hero__oval hero__oval--1"></div>
+    <div class="hero__oval hero__oval--2"></div>
+    <div class="hero__oval hero__oval--3"></div>
+    <div class="wrap">
+      <div class="hero__grid">
+        <div>
+          <span class="eyebrow">⚽ Season 2026 · Open-plan division</span>
+          <h1>Some of us are here to work. <em>Some of us are here to talk about the weekend.</em></h1>
+          <p class="hero__lead">
+            Every match recap, transfer rumour and VAR monologue now carries a price.
+            Log the offence, the offender pays into the kitty, and at the end of the
+            season the kitty buys everyone something that is not football.
+          </p>
+          <div class="hero__cta">
+            <a class="btn btn--light" href="#report">Report an offence</a>
+            <a class="btn btn--ghost" style="border-color:rgba(255,255,255,.5);color:#fff" href="#leaderboard">See the table</a>
+          </div>
+        </div>
+
+        <aside class="kitty" aria-labelledby="kitty-label">
+          <div class="kitty__label" id="kitty-label">Total in the kitty</div>
+          <div class="kitty__amount" id="kitty-amount">kr 0</div>
+          <p class="kitty__note" id="kitty-note">Collected so far this season.</p>
+          <div class="kitty__split">
+            <div class="kitty__stat">
+              <b id="kitty-count">0</b>
+              <span>offences logged</span>
+            </div>
+            <div class="kitty__stat">
+              <b id="kitty-worst">—</b>
+              <span>current leader</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section class="section" style="padding-bottom:0">
+    <div class="wrap">
+      <div class="stats" id="stats"></div>
+    </div>
+  </section>
+
+  <!-- ============ LEADERBOARD ============ -->
+  <section class="section" id="leaderboard">
+    <div class="wrap">
+      <div class="section__head">
+        <span class="section__kicker">The table</span>
+        <h2>Hall of shame</h2>
+        <p>Ranked by total fines. No relegation, no mercy, no VAR.</p>
+      </div>
+
+      <div class="podium" id="podium"></div>
+
+      <div class="board">
+        <div class="board__toolbar">
+          <strong>Full standings</strong>
+          <button class="chip" data-sort="total" aria-pressed="true">By kroner</button>
+          <button class="chip" data-sort="count" aria-pressed="false">By offences</button>
+          <button class="chip" data-sort="name"  aria-pressed="false">A–Z</button>
+        </div>
+        <table>
+          <caption class="sr-only">Employees ranked by total football fines</caption>
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Employee</th>
+              <th scope="col" class="col-hide">Signature offence</th>
+              <th scope="col" class="col-hide">Share of kitty</th>
+              <th scope="col" class="num">Offences</th>
+              <th scope="col" class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="board-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RULE BOOK ============ -->
+  <section class="section section--tint" id="rulebook">
+    <div class="wrap">
+      <div class="section__head">
+        <span class="section__kicker">The rule book</span>
+        <h2>What counts as an infraction</h2>
+        <p>
+          Twelve offences, three severity levels. Anyone within earshot may call it.
+          Disputes are settled by whoever is nearest the coffee machine.
+        </p>
+      </div>
+      <div class="cards" id="rulebook-cards"></div>
+    </div>
+  </section>
+
+  <!-- ============ REPORT + LEDGER ============ -->
+  <section class="section" id="report">
+    <div class="wrap">
+      <div class="section__head">
+        <span class="section__kicker">Enforcement</span>
+        <h2>Caught someone in the act?</h2>
+        <p>Log it while it is still fresh. The board updates immediately.</p>
+      </div>
+
+      <div class="split">
+        <form class="report" id="report-form" novalidate>
+          <div class="field">
+            <label for="f-who">Offender</label>
+            <select id="f-who" name="who" required></select>
+          </div>
+          <div class="field">
+            <label for="f-what">Infraction</label>
+            <select id="f-what" name="what" required></select>
+          </div>
+          <div class="field field--full">
+            <label for="f-note">What happened <span style="font-weight:400;color:var(--ink-45)">(optional)</span></label>
+            <input type="text" id="f-note" name="note" maxlength="90"
+                   placeholder="e.g. Drew a formation on the sprint board. Again.">
+          </div>
+          <div class="report__actions">
+            <button type="submit" class="btn btn--primary">Issue the fine</button>
+            <span class="field__hint" id="fine-preview"></span>
+          </div>
+        </form>
+
+        <div class="panel" id="ledger">
+          <h3>Recent offences</h3>
+          <p class="panel__sub">The last fifteen entries in the ledger.</p>
+          <div class="feed" id="feed"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__grid">
+      <div>
+        <div class="brand" style="margin-bottom:12px">
+          <svg class="brand__mark" viewBox="0 0 48 48" aria-hidden="true">
+            <ellipse cx="18" cy="24" rx="15" ry="21" fill="none" stroke="#ffdfdf" stroke-width="5"/>
+            <ellipse cx="30" cy="24" rx="15" ry="21" fill="none" stroke="#da291c" stroke-width="5"/>
+          </svg>
+          <span class="brand__name">Offside</span>
+        </div>
+        <p>
+          An entirely unofficial fine board for one open-plan area with one
+          recurring conversational problem. All proceeds go to the kitty. The
+          kitty goes to cake.
+        </p>
+      </div>
+      <div>
+        <h4>House rules</h4>
+        <ul>
+          <li>Anyone may call an offence.</li>
+          <li>Denial is itself an offence.</li>
+          <li>Monday mornings are double.</li>
+          <li>Handball and cross-country are exempt.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Appeals</h4>
+        <ul>
+          <li>Submit in writing.</li>
+          <li>Appeals are not read.</li>
+          <li>There is no VAR.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>Built for internal amusement. Not a Storebrand product.</span>
+      <span><button class="btn btn--sm" id="reset" style="background:transparent;color:rgba(255,240,240,.75);border-color:rgba(255,255,255,.25);padding:5px 14px">Reset to seed data</button></span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

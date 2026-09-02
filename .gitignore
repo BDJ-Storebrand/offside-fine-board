@@ -1,0 +1,11 @@
+# Storebrand's custom typeface is licensed and must not be redistributed.
+# The stylesheet loads it from assets.storebrand.no instead.
+assets/fonts/
+*.woff
+*.woff2
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
