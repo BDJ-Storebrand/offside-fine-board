@@ -39,6 +39,9 @@
 
 <main id="top">
 
+  <!-- Shown only when the board cannot reach Supabase -->
+  <div class="wrap"><div class="notice" id="notice" role="alert" hidden></div></div>
+
   <!-- ============ HERO ============ -->
   <section class="hero">
     <div class="hero__oval hero__oval--1"></div>
@@ -143,7 +146,7 @@
       <div class="section__head">
         <span class="section__kicker">Enforcement</span>
         <h2>Caught someone in the act?</h2>
-        <p>Log it while it is still fresh. The board updates immediately.</p>
+        <p>Log it while it is still fresh. Everyone's board updates at once.</p>
       </div>
 
       <div class="split">
@@ -216,13 +219,16 @@
     </div>
     <div class="footer__bottom">
       <span>Built for internal amusement. Not a Storebrand product.</span>
-      <span><button class="btn btn--sm" id="reset" style="background:transparent;color:rgba(255,240,240,.75);border-color:rgba(255,255,255,.25);padding:5px 14px">Reset to seed data</button></span>
+      <span class="boardstatus boardstatus--wait" id="board-status" role="status" aria-live="polite">Loading the board…</span>
     </div>
   </div>
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="store.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
