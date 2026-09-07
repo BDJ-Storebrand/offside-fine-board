@@ -5,16 +5,62 @@ A fine board for an open-plan area with one recurring conversational problem.
 Log the offence, the offender pays into the kitty, and at the end of the season
 the kitty buys everyone something that is not football.
 
-## Running it
+One shared board: whoever logs an offence, everyone sees it. Open tabs update
+live; anyone arriving later gets the current standings.
 
-No build step, no dependencies. Open `index.html` in a browser — that's it.
+## Setup
 
-If you'd rather serve it:
+The page is plain static files, but the ledger lives in a
+[Supabase](https://supabase.com) project so the whole team shares one board.
+You need to do this once.
+
+1. **Create the project.** supabase.com → New project. Free tier is plenty.
+   Note the region; pick one near you.
+2. **Create the tables.** SQL Editor → New query → paste all of
+   `supabase/schema.sql` → Run. Safe to re-run.
+3. **Load the squad.** Same again with `supabase/seed.local.sql` — the squad
+   plus the starting ledger. That file is gitignored because it has real names
+   in it.
+4. **Point the site at the project.** Project Settings → API. Copy the
+   **Project URL** and the **anon / public** key into `config.js`.
+   Never the `service_role` key — it bypasses every security policy.
+5. **Publish.** Push to `main`, then repo Settings → Pages → Source:
+   *Deploy from a branch*, branch `main`, folder `/ (root)`. A minute later the
+   board is at `https://<user>.github.io/offside-fine-board/`.
+
+Until step 4 is done the page loads but shows a banner telling you so.
+
+## Who can see it
+
+**Anyone with the link.** There is no login. Names, running totals and every
+ledger note are readable by anyone who finds the URL, and anyone can log an
+offence. That is a deliberate choice for a joke board among colleagues — but it
+is a real choice, so don't write anything in a note you wouldn't put on a
+whiteboard in the corridor.
+
+Two things the database still refuses, via the policies in `schema.sql`:
+
+- **Editing history** — there is no `UPDATE` policy at all, so a fine cannot be
+  quietly altered after the fact.
+- **Wiping the season** — a fine can only be deleted within ten minutes of
+  being logged. Enough to undo a misfire, not enough for a drive-by reset.
+
+If you later want it properly private, the honest answer is that GitHub Pages
+can't do that — no server, no password check. You'd move the site to Cloudflare
+Pages and put Cloudflare Access in front of it.
+
+## Running it locally
 
 ```bash
 python3 -m http.server 8777
 # → http://localhost:8777
 ```
+
+Opening `index.html` straight off disk won't work any more — the browser blocks
+the Supabase request from a `file://` page. Use the server above.
+
+Local and deployed both talk to the same Supabase project, so **a fine you log
+while testing is a real fine on everyone's board.**
 
 ## What's in it
 
@@ -25,21 +71,31 @@ python3 -m http.server 8777
 | **Podium** | Top three offenders, with earned titles |
 | **Leaderboard** | Full standings — sortable by kroner, offence count or A–Z |
 | **Rule book** | 12 infractions across three severity tiers, kr 20–75 |
-| **Report** | Issue a fine; the board updates immediately |
-| **Ledger** | The last fifteen entries |
+| **Report** | Issue a fine; every open board updates at once |
+| **Ledger** | The last fifteen entries, each undoable for ten minutes |
 
-State persists to `localStorage`. The footer has a **Reset to seed data** button.
+The footer shows a live/offline indicator for the connection to the board.
 
-## Changing the squad or the rules
+## Changing the squad
 
-Edit **`data.js`** and nothing else — everything on the page derives from it.
+The squad lives in the database, not in a file — so adding someone doesn't need
+a redeploy. Supabase → Table Editor → `players` → Insert row:
+
+| column | example | notes |
+| --- | --- | --- |
+| `id` | `kari` | lowercase, no spaces; referenced by every fine |
+| `name` | `Kari` | what the board shows |
+| `colour` | `#819f2b` | avatar colour, from the palette in `styles.css` |
+| `active` | `true` | set `false` to retire someone without losing their history |
+
+They appear on the board on the next load.
+
+## Changing the rules
+
+Edit **`data.js`** — the rule book is not sensitive, so it stays in the repo
+and remains a one-file change.
 
 ```js
-const EMPLOYEES = [
-  { id: "eivind", name: "Eivind", colour: "#b20000" },
-  // ...
-];
-
 const INFRACTIONS = [
   {
     id: "derby-meltdown", icon: "🔥", name: "Derby day meltdown",
@@ -51,12 +107,10 @@ const INFRACTIONS = [
 ```
 
 - `severity` — `1` minor, `2` serious, `3` straight red
-- `colour` / `tint` — pick from the brand palette in `styles.css`
-- `SEED_FINES` uses `daysAgo`, converted to real timestamps on load
+- `tint` — pick from the brand palette in `styles.css`
 
-Adding an eleventh colleague or a thirteenth offence is a one-line change.
-Entries in the stored ledger that point at a deleted person or rule are
-discarded on load, so pruning `data.js` won't break a saved board.
+Ledger entries pointing at a rule you've deleted are discarded when the board
+loads, so pruning `data.js` won't break the saved history.
 
 ## Design
 
@@ -75,10 +129,14 @@ stylesheet (`assets.storebrand.no/elements/web24`):
 ## Files
 
 ```
-index.html    markup
-styles.css    design system + layout
-data.js       the squad, the rule book, the seed ledger  ← edit this
-app.js        scoring, rendering, persistence
+index.html              markup
+styles.css              design system + layout
+data.js                 the rule book and rank titles     ← edit this
+config.js               Supabase project URL + anon key   ← fill this in once
+store.js                everything that talks to Supabase
+app.js                  scoring, rendering, live updates
+supabase/schema.sql     tables and security policies      ← run this once
+supabase/seed.local.sql squad + starting ledger (gitignored, has real names)
 ```
 
 ---

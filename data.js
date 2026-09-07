@@ -1,21 +1,12 @@
 /* =========================================================
-   Offside — seed data
-   Edit this file to change the squad, the rules or the prices.
-   ========================================================= */
+   Offside — the rule book
+   Edit this file to change the rules, the prices or the rank titles.
 
-/* ---------- The squad ---------- */
-const EMPLOYEES = [
-  { id: "eivind",  name: "Eivind",  colour: "#b20000" },
-  { id: "bradley", name: "Bradley", colour: "#410e44" },
-  { id: "isabel",  name: "Isabel",  colour: "#da291c" },
-  { id: "mie",     name: "Mie",     colour: "#819f2b" },
-  { id: "erik",    name: "Erik",    colour: "#560000" },
-  { id: "badr",    name: "Badr",    colour: "#bf0900" },
-  { id: "johan",   name: "Johan",   colour: "#776654" },
-  { id: "jeppe",   name: "Jeppe",   colour: "#5f3f3f" },
-  { id: "igor",    name: "Igor",    colour: "#bb1b18" },
-  { id: "cecilie", name: "Cecilie", colour: "#aa0600" },
-];
+   The squad and the ledger are NOT here any more. They live in Supabase so
+   that everyone shares one board:
+     · add or retire a colleague → Supabase → Table Editor → players
+     · the ledger fills itself as people report offences
+   ========================================================= */
 
 /* ---------- The rule book ----------
    severity: 1 = minor mumble, 2 = proper offence, 3 = straight red   */
@@ -90,57 +81,4 @@ const TITLES = [
   { min: 60,  label: "Warned once" },
   { min: 1,   label: "Mostly behaves" },
   { min: 0,   label: "Clean sheet" },
-];
-
-/* ---------- Seed ledger ----------
-   daysAgo is turned into a real timestamp on load.               */
-const SEED_FINES = [
-  { who: "eivind",  what: "derby-meltdown",   daysAgo: 1,  note: "Would not speak until 14:00." },
-  { who: "eivind",  what: "var-debate",       daysAgo: 1,  note: "Used a coffee cup as the offside line." },
-  { who: "eivind",  what: "referee-rant",     daysAgo: 3,  note: "" },
-  { who: "eivind",  what: "match-recap",      daysAgo: 4,  note: "Third recap of the same game." },
-  { who: "eivind",  what: "tactics-lecture",  daysAgo: 6,  note: "On the retro whiteboard." },
-  { who: "eivind",  what: "transfer-window",  daysAgo: 8,  note: "" },
-  { who: "eivind",  what: "xg-dump",          daysAgo: 11, note: "" },
-
-  { who: "igor",    what: "goal-reenactment", daysAgo: 2,  note: "Knocked over a plant." },
-  { who: "igor",    what: "kit-offence",      daysAgo: 5,  note: "On a day with external visitors." },
-  { who: "igor",    what: "match-recap",      daysAgo: 5,  note: "" },
-  { who: "igor",    what: "player-gossip",    daysAgo: 7,  note: "" },
-  { who: "igor",    what: "referee-rant",     daysAgo: 9,  note: "Ten uninterrupted minutes." },
-  { who: "igor",    what: "table-recital",    daysAgo: 12, note: "Including goal difference." },
-
-  { who: "badr",    what: "transfer-window",  daysAgo: 1,  note: "\"Confirmed\" by a fan account." },
-  { who: "badr",    what: "transfer-window",  daysAgo: 4,  note: "Different player, same source." },
-  { who: "badr",    what: "fantasy-league",   daysAgo: 4,  note: "" },
-  { who: "badr",    what: "player-gossip",    daysAgo: 6,  note: "" },
-  { who: "badr",    what: "var-debate",       daysAgo: 10, note: "" },
-  { who: "badr",    what: "match-recap",      daysAgo: 13, note: "" },
-
-  { who: "jeppe",   what: "fantasy-league",   daysAgo: 2,  note: "Captain choice, live, in stand-up." },
-  { who: "jeppe",   what: "fantasy-league",   daysAgo: 9,  note: "Wildcard announcement." },
-  { who: "jeppe",   what: "xg-dump",          daysAgo: 3,  note: "In the pension product review." },
-  { who: "jeppe",   what: "table-recital",    daysAgo: 7,  note: "" },
-  { who: "jeppe",   what: "match-recap",      daysAgo: 14, note: "" },
-
-  { who: "erik",    what: "tactics-lecture",  daysAgo: 2,  note: "Formation drawn on a napkin, then laminated." },
-  { who: "erik",    what: "xg-dump",          daysAgo: 5,  note: "" },
-  { who: "erik",    what: "referee-rant",     daysAgo: 8,  note: "" },
-  { who: "erik",    what: "match-recap",      daysAgo: 15, note: "" },
-
-  { who: "johan",   what: "kit-offence",      daysAgo: 3,  note: "Away kit. Somehow worse." },
-  { who: "johan",   what: "player-gossip",    daysAgo: 6,  note: "" },
-  { who: "johan",   what: "match-recap",      daysAgo: 11, note: "" },
-
-  { who: "bradley", what: "var-debate",       daysAgo: 4,  note: "Started it, then denied starting it." },
-  { who: "bradley", what: "match-recap",      daysAgo: 7,  note: "" },
-  { who: "bradley", what: "table-recital",    daysAgo: 16, note: "" },
-
-  { who: "isabel",  what: "goal-reenactment", daysAgo: 6,  note: "Volley. Impressive, still illegal." },
-  { who: "isabel",  what: "player-gossip",    daysAgo: 12, note: "" },
-
-  { who: "cecilie", what: "transfer-window",  daysAgo: 9,  note: "" },
-  { who: "cecilie", what: "match-recap",      daysAgo: 18, note: "" },
-
-  { who: "mie",     what: "fantasy-league",   daysAgo: 13, note: "Leads the mini-league. Still a fine." },
 ];

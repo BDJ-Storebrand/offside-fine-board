@@ -1,12 +1,15 @@
 /* =========================================================
    Offside — application logic
-   No build step, no dependencies. State lives in localStorage.
+   No build step, no dependencies. The board lives in Supabase (see store.js),
+   so everyone is looking at the same table. New fines arrive over a realtime
+   subscription; if that drops, the board refetches whenever the tab regains
+   focus, so nobody ends up staring at a stale leaderboard.
    ========================================================= */
 (function () {
   "use strict";
 
-  var STORE_KEY = "offside.fines.v1";
   var DAY = 86400000;
+  var UNDO_WINDOW = 10 * 60000;   // must match the delete policy in schema.sql
 
   var byId = function (list, id) {
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
@@ -16,40 +19,15 @@
 
   /* ---------------- state ---------------- */
 
-  function seed() {
-    var now = Date.now();
-    return SEED_FINES.map(function (f, i) {
-      return {
-        id: "seed-" + i,
-        who: f.who,
-        what: f.what,
-        note: f.note || "",
-        // spread seeded entries through the working day for a plausible ledger
-        at: now - f.daysAgo * DAY + (i % 7) * 40 * 60000,
-      };
+  var EMPLOYEES = [];   // the squad, from Supabase
+  var fines = [];       // the ledger, from Supabase
+
+  /* Drop entries pointing at a colleague or a rule that no longer exists. */
+  function usable(list) {
+    return list.filter(function (f) {
+      return f && byId(EMPLOYEES, f.who) && byId(INFRACTIONS, f.what);
     });
   }
-
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return seed();
-      var parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return seed();
-      // drop entries pointing at people or rules that no longer exist
-      return parsed.filter(function (f) {
-        return f && byId(EMPLOYEES, f.who) && byId(INFRACTIONS, f.what);
-      });
-    } catch (e) {
-      return seed();
-    }
-  }
-
-  function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(fines)); } catch (e) { /* private mode */ }
-  }
-
-  var fines = load();
 
   /* ---------------- helpers ---------------- */
 
@@ -83,6 +61,12 @@
   function avatar(emp, cls) {
     return '<span class="avatar ' + (cls || "") + '" style="background:' + emp.colour +
       '" aria-hidden="true">' + initials(emp.name) + "</span>";
+  }
+
+  /* Supabase errors are objects; pull something a human can read out of them. */
+  function reason(err) {
+    if (!err) return "unknown error";
+    return err.message || err.error_description || String(err);
   }
 
   /* ---------------- derived data ---------------- */
@@ -152,6 +136,7 @@
 
     var clean = rows.filter(function (r) { return r.count === 0; }).length;
     var pot = rows.reduce(function (s, r) { return s + r.total; }, 0);
+    var heads = EMPLOYEES.length || 1;
 
     var week = Date.now() - 7 * DAY;
     var thisWeek = fines.filter(function (f) { return f.at >= week; });
@@ -165,7 +150,7 @@
       },
       {
         k: "Average per head",
-        v: kr(Math.round(pot / EMPLOYEES.length)),
+        v: kr(Math.round(pot / heads)),
         d: "Across all " + EMPLOYEES.length + " of us",
       },
       {
@@ -189,14 +174,14 @@
 
   function renderPodium(rows) {
     var top = rows.slice(0, 3);
-    var order = [top[1], top[0], top[2]]; // silver, gold, bronze
-    var medals = ["Runner-up", "Worst offender", "Third place"];
+    var order = [top[1], top[0], top[2]]; // rendered silver, gold, bronze so gold sits centre
+    var medals = { 1: "Worst offender", 2: "Runner-up", 3: "Third place" };
 
     $("#podium").innerHTML = order.map(function (r, i) {
       if (!r) return "";
       var place = i === 1 ? 1 : i === 0 ? 2 : 3;
       return '<article class="pod pod--' + place + '">' +
-        '<span class="pod__medal">' + medals[place - 1] + "</span>" +
+        '<span class="pod__medal">' + medals[place] + "</span>" +
         avatar(r.emp) +
         '<div class="pod__name">' + esc(r.emp.name) + "</div>" +
         '<div class="pod__meta">' + esc(titleFor(r.total)) + "</div>" +
@@ -266,13 +251,18 @@
     $("#feed").innerHTML = recent.map(function (f) {
       var emp = byId(EMPLOYEES, f.who);
       var inf = byId(INFRACTIONS, f.what);
+      // Fined the wrong colleague? There is a short window to take it back.
+      var undo = (Date.now() - f.at) < UNDO_WINDOW
+        ? '<button class="feed__undo" data-undo="' + esc(f.id) +
+          '" title="Rescind this fine">Undo</button>'
+        : "";
       return '<div class="feed__item">' + avatar(emp) +
         '<div class="feed__body">' +
           "<p><b>" + esc(emp.name) + "</b> — " + esc(inf.icon + " " + inf.name) + "</p>" +
           (f.note ? '<p class="feed__note">"' + esc(f.note) + '"</p>' : "") +
         "</div>" +
         '<span class="feed__amount">' + kr(inf.fine) + "</span>" +
-        '<span class="feed__time">' + timeAgo(f.at) + "</span>" +
+        '<span class="feed__time">' + timeAgo(f.at) + undo + "</span>" +
         "</div>";
     }).join("");
   }
@@ -318,52 +308,158 @@
     toastTimer = setTimeout(function () { el.classList.remove("is-visible"); }, 3600);
   }
 
+  /* ---------------- connection state ---------------- */
+
+  function setStatus(kind, text) {
+    var el = $("#board-status");
+    if (!el) return;
+    el.className = "boardstatus boardstatus--" + kind;
+    el.textContent = text;
+  }
+
+  function showNotice(html) {
+    var el = $("#notice");
+    if (!el) return;
+    el.innerHTML = html;
+    el.hidden = false;
+  }
+
+  /* ---------------- loading ---------------- */
+
+  var refreshTimer;
+
+  async function refresh() {
+    try {
+      fines = usable(await OffsideStore.fines());
+      render();
+      setStatus("live", "Live — new fines appear here as they are logged.");
+    } catch (err) {
+      setStatus("down", "Cannot reach the board — " + reason(err));
+    }
+  }
+
+  /* Realtime can fire several events at once; coalesce them into one refetch. */
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refresh, 250);
+  }
+
   /* ---------------- wiring ---------------- */
 
-  fillSelects();
-  updatePreview();
-  render();
+  function wireForm() {
+    $("#f-who").addEventListener("change", updatePreview);
+    $("#f-what").addEventListener("change", updatePreview);
 
-  $("#f-who").addEventListener("change", updatePreview);
-  $("#f-what").addEventListener("change", updatePreview);
+    $("#report-form").addEventListener("submit", async function (ev) {
+      ev.preventDefault();
+      var who = $("#f-who").value;
+      var what = $("#f-what").value;
+      var emp = byId(EMPLOYEES, who);
+      var inf = byId(INFRACTIONS, what);
+      if (!emp || !inf) return;
 
-  $("#report-form").addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    var who = $("#f-who").value;
-    var what = $("#f-what").value;
-    var emp = byId(EMPLOYEES, who);
-    var inf = byId(INFRACTIONS, what);
-    if (!emp || !inf) return;
+      var btn = $("#report-form button[type=submit]");
+      btn.disabled = true;
+      btn.textContent = "Filing…";
 
-    fines.push({
-      id: "f-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
-      who: who,
-      what: what,
-      note: $("#f-note").value.trim(),
-      at: Date.now(),
+      try {
+        var row = await OffsideStore.addFine(who, what, $("#f-note").value.trim());
+        // The realtime event will also land; only add it once.
+        if (!fines.some(function (f) { return f.id === row.id; })) fines.push(row);
+        render();
+        $("#f-note").value = "";
+        toast(emp.name + " fined " + kr(inf.fine) + " for " + inf.name.toLowerCase() + ".");
+      } catch (err) {
+        toast("That fine did not save — " + reason(err));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Issue the fine";
+      }
     });
-    save();
-    render();
+  }
 
-    $("#f-note").value = "";
-    toast(emp.name + " fined " + kr(inf.fine) + " for " + inf.name.toLowerCase() + ".");
-  });
+  function wireFeed() {
+    $("#feed").addEventListener("click", async function (ev) {
+      var btn = ev.target.closest("[data-undo]");
+      if (!btn) return;
+      var id = btn.getAttribute("data-undo");
+      btn.disabled = true;
 
-  Array.prototype.forEach.call(document.querySelectorAll("[data-sort]"), function (btn) {
-    btn.addEventListener("click", function () {
-      sortMode = btn.getAttribute("data-sort");
-      Array.prototype.forEach.call(document.querySelectorAll("[data-sort]"), function (b) {
-        b.setAttribute("aria-pressed", String(b === btn));
+      try {
+        await OffsideStore.removeFine(id);
+        fines = fines.filter(function (f) { return f.id !== id; });
+        render();
+        toast("Fine rescinded.");
+      } catch (err) {
+        btn.disabled = false;
+        toast("Could not rescind that — " + reason(err));
+      }
+    });
+  }
+
+  function wireSort() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sort]"), function (btn) {
+      btn.addEventListener("click", function () {
+        sortMode = btn.getAttribute("data-sort");
+        Array.prototype.forEach.call(document.querySelectorAll("[data-sort]"), function (b) {
+          b.setAttribute("aria-pressed", String(b === btn));
+        });
+        renderBoard(tally());
       });
-      renderBoard(tally());
     });
-  });
+  }
 
-  $("#reset").addEventListener("click", function () {
-    if (!confirm("Reset the board back to the seeded example data?")) return;
-    fines = seed();
-    save();
-    render();
-    toast("Board reset to seed data.");
-  });
+  /* ---------------- boot ---------------- */
+
+  (async function boot() {
+    wireSort();
+
+    if (!OffsideStore.configured()) {
+      setStatus("down", "Not connected to a board.");
+      showNotice(
+        "<b>This board is not connected yet.</b> Fill in your Supabase project " +
+        "URL and anon key in <code>config.js</code>, then run " +
+        "<code>supabase/schema.sql</code>. Setup steps are in the README."
+      );
+      return;
+    }
+
+    setStatus("wait", "Loading the board…");
+
+    try {
+      EMPLOYEES = await OffsideStore.players();
+    } catch (err) {
+      setStatus("down", "Cannot reach the board — " + reason(err));
+      showNotice("<b>Could not load the squad.</b> " + esc(reason(err)));
+      return;
+    }
+
+    if (!EMPLOYEES.length) {
+      setStatus("down", "No players on the board.");
+      showNotice(
+        "<b>The squad is empty.</b> Run <code>supabase/seed.local.sql</code> in the " +
+        "Supabase SQL editor, or add people under Table Editor → <code>players</code>."
+      );
+      return;
+    }
+
+    fillSelects();
+    updatePreview();
+    wireForm();
+    wireFeed();
+
+    await refresh();
+
+    // Someone else logs a fine → it lands here without a reload.
+    OffsideStore.subscribe(scheduleRefresh);
+
+    // Belt and braces: if the socket dropped while the tab was hidden,
+    // catch up the moment it comes back.
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) scheduleRefresh();
+    });
+
+    // Keep the "3m ago" stamps honest on a board left open all afternoon.
+    setInterval(renderFeed, 60000);
+  })();
 })();

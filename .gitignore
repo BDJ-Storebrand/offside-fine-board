@@ -4,6 +4,11 @@ assets/fonts/
 *.woff
 *.woff2
 
+# Seed SQL carries real colleague names and this repo is public.
+# Run it in Supabase, keep it off GitHub.
+*.local.sql
+supabase/seed.local.sql
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
