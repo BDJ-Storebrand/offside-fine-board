@@ -8,7 +8,11 @@
 <link rel="preconnect" href="https://assets.storebrand.no" crossorigin>
 <link rel="preload" href="https://assets.storebrand.no/elements/web24/1.0.0/fonts/ba4768683a65efb0b694.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="https://assets.storebrand.no/elements/web24/1.0.0/fonts/bd126a772f887a6e1276.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css">
+<!-- ?v= is a cache buster. index.html and the files below are separate
+     resources with separate cache lifetimes, so without it a browser can pair
+     a freshly deployed page with a stale script it already had. Bump the date
+     whenever you change styles.css or any of the scripts at the bottom. -->
+<link rel="stylesheet" href="styles.css?v=2026-09-11">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
 </head>
 <body>
@@ -30,7 +34,6 @@
     <nav class="mainnav" aria-label="Main">
       <a href="#leaderboard">Leaderboard</a>
       <a href="#rulebook">Rule book</a>
-      <a href="#report">Report</a>
       <a href="#ledger">Ledger</a>
     </nav>
     <a class="btn btn--primary btn--sm" href="#report">Report an offence</a>
@@ -43,24 +46,19 @@
   <div class="wrap"><div class="notice" id="notice" role="alert" hidden></div></div>
 
   <!-- ============ HERO ============ -->
-  <section class="hero">
+  <section class="hero hero--compact" id="report">
     <div class="hero__oval hero__oval--1"></div>
     <div class="hero__oval hero__oval--2"></div>
-    <div class="hero__oval hero__oval--3"></div>
     <div class="wrap">
-      <div class="hero__grid">
-        <div>
+      <div class="hero__top">
+        <div class="hero__intro">
           <span class="eyebrow">⚽ Season 2026 · Open-plan division</span>
           <h1>Some of us are here to work. <em>Some of us are here to talk about the weekend.</em></h1>
           <p class="hero__lead">
-            Every match recap, transfer rumour and VAR monologue now carries a price.
-            Log the offence, the offender pays into the kitty, and at the end of the
-            season the kitty buys everyone something that is not football.
+            Every match recap, transfer rumour and VAR monologue carries a price.
+            Log it here — at the end of the season the kitty buys everyone
+            something that is not football.
           </p>
-          <div class="hero__cta">
-            <a class="btn btn--light" href="#report">Report an offence</a>
-            <a class="btn btn--ghost" style="border-color:rgba(255,255,255,.5);color:#fff" href="#leaderboard">See the table</a>
-          </div>
         </div>
 
         <aside class="kitty" aria-labelledby="kitty-label">
@@ -79,6 +77,35 @@
           </div>
         </aside>
       </div>
+
+      <!-- One row of four fields, then the button. The hint under the first
+           field is load-bearing: it is the only place the page admits that
+           nothing verifies who you say you are. -->
+      <form class="report" id="report-form" novalidate>
+        <h2 class="report__title">Caught someone in the act?</h2>
+        <div class="field">
+          <label for="f-by">Who is booking this?</label>
+          <select id="f-by" name="booked_by" required></select>
+          <span class="field__hint">Honour system. Nobody checks.</span>
+        </div>
+        <div class="field">
+          <label for="f-who">Offender</label>
+          <select id="f-who" name="who" required></select>
+        </div>
+        <div class="field">
+          <label for="f-what">Infraction</label>
+          <select id="f-what" name="what" required></select>
+        </div>
+        <div class="field">
+          <label for="f-note">What happened <span style="font-weight:400;color:var(--ink-45)">(optional)</span></label>
+          <input type="text" id="f-note" name="note" maxlength="90"
+                 placeholder="e.g. Drew a formation on the sprint board.">
+        </div>
+        <div class="report__actions">
+          <button type="submit" class="btn btn--primary">Issue the fine</button>
+          <span class="field__hint" id="fine-preview"></span>
+        </div>
+      </form>
     </div>
   </section>
 
@@ -122,7 +149,8 @@
             <tr>
               <th scope="col">#</th>
               <th scope="col">Employee</th>
-              <th scope="col" class="col-hide">Signature offence</th>
+              <th scope="col" class="col-hide">Most recent offence</th>
+              <th scope="col" class="col-hide">Booked by</th>
               <th scope="col" class="col-hide">Share of kitty</th>
               <th scope="col" class="num">Offences</th>
               <th scope="col" class="num">Total</th>
@@ -149,46 +177,20 @@
     </div>
   </section>
 
-  <!-- ============ REPORT + LEDGER ============ -->
-  <section class="section" id="report">
+  <!-- ============ LEDGER ============ -->
+  <section class="section" id="ledger">
     <div class="wrap">
       <div class="section__head">
-        <span class="section__kicker">Enforcement</span>
-        <h2>Caught someone in the act?</h2>
-        <p>Log it while it is still fresh. Everyone's board updates at once.</p>
+        <span class="section__kicker">The ledger</span>
+        <h2>Recent offences</h2>
+        <p>
+          The last fifteen entries, newest first. Anything logged in the past
+          ten minutes can still be taken back.
+        </p>
       </div>
 
-      <div class="split">
-        <form class="report" id="report-form" novalidate>
-          <div class="field">
-            <label for="f-by">Who is booking this?</label>
-            <select id="f-by" name="booked_by" required></select>
-            <span class="field__hint">Honour system. Nobody checks, so put your own name.</span>
-          </div>
-          <div class="field">
-            <label for="f-who">Offender</label>
-            <select id="f-who" name="who" required></select>
-          </div>
-          <div class="field field--full">
-            <label for="f-what">Infraction</label>
-            <select id="f-what" name="what" required></select>
-          </div>
-          <div class="field field--full">
-            <label for="f-note">What happened <span style="font-weight:400;color:var(--ink-45)">(optional)</span></label>
-            <input type="text" id="f-note" name="note" maxlength="90"
-                   placeholder="e.g. Drew a formation on the sprint board. Again.">
-          </div>
-          <div class="report__actions">
-            <button type="submit" class="btn btn--primary">Issue the fine</button>
-            <span class="field__hint" id="fine-preview"></span>
-          </div>
-        </form>
-
-        <div class="panel" id="ledger">
-          <h3>Recent offences</h3>
-          <p class="panel__sub">The last fifteen entries in the ledger.</p>
-          <div class="feed" id="feed"></div>
-        </div>
+      <div class="panel">
+        <div class="feed" id="feed"></div>
       </div>
     </div>
   </section>
@@ -241,9 +243,9 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="store.js"></script>
-<script src="data.js"></script>
-<script src="app.js"></script>
+<script src="config.js?v=2026-09-11"></script>
+<script src="store.js?v=2026-09-11"></script>
+<script src="data.js?v=2026-09-11"></script>
+<script src="app.js?v=2026-09-11"></script>
 </body>
 </html>

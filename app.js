@@ -76,24 +76,24 @@
       var own = fines.filter(function (f) { return f.who === emp.id; });
       var total = own.reduce(function (sum, f) { return sum + byId(INFRACTIONS, f.what).fine; }, 0);
 
-      // most frequent infraction, ties broken by the more expensive one
-      var counts = {};
-      own.forEach(function (f) { counts[f.what] = (counts[f.what] || 0) + 1; });
-      var signature = null;
-      Object.keys(counts).forEach(function (k) {
-        if (!signature ||
-            counts[k] > counts[signature] ||
-            (counts[k] === counts[signature] && byId(INFRACTIONS, k).fine > byId(INFRACTIONS, signature).fine)) {
-          signature = k;
-        }
-      });
+      // Their latest offence, and who booked it. `fines` is not reliably
+      // sorted once a live update pushes a new one in, so compare on `at`
+      // rather than taking the first matching row.
+      var latest = null;
+      own.forEach(function (f) { if (!latest || f.at > latest.at) latest = f; });
+
+      // lastRef is null when their most recent fine predates the honour
+      // system, or when the referee has since left the squad.
+      var lastRule = latest ? byId(INFRACTIONS, latest.what) : null;
+      var lastRef = latest && latest.by ? byId(EMPLOYEES, latest.by) : null;
 
       return {
         emp: emp,
         count: own.length,
         total: total,
-        signature: signature ? byId(INFRACTIONS, signature) : null,
-        signatureCount: signature ? counts[signature] : 0,
+        lastRule: lastRule,
+        lastAt: latest ? latest.at : 0,
+        lastRef: lastRef,
       };
     });
 
@@ -262,9 +262,11 @@
     $("#board-body").innerHTML = view.map(function (r) {
       var rank = ranked.indexOf(r) + 1;
       var share = Math.round((r.total / pot) * 100);
-      var sig = r.signature
-        ? '<span class="tag">' + esc(r.signature.icon + " " + r.signature.name) +
-          (r.signatureCount > 1 ? " ×" + r.signatureCount : "") + "</span>"
+      // The tag names the offence; the tooltip says when, since "most recent"
+      // means nothing on its own for someone last booked in March.
+      var last = r.lastRule
+        ? '<span class="tag" title="' + esc(timeAgo(r.lastAt)) + '">' +
+          esc(r.lastRule.icon + " " + r.lastRule.name) + "</span>"
         : '<span class="tag tag--clean">Nothing on record</span>';
 
       return "<tr>" +
@@ -272,7 +274,9 @@
         '<td><div class="player">' + avatar(r.emp) +
           '<div><div class="player__name">' + esc(r.emp.name) + "</div>" +
           '<div class="player__title">' + esc(titleFor(r.total)) + "</div></div></div></td>" +
-        '<td class="col-hide">' + sig + "</td>" +
+        '<td class="col-hide">' + last + "</td>" +
+        '<td class="col-hide">' +
+          (r.lastRef ? esc(r.lastRef.name) : '<span class="cell-none">—</span>') + "</td>" +
         '<td class="col-hide"><div class="bar" title="' + share + '% of the kitty">' +
           '<i style="width:' + Math.round((r.total / max) * 100) + '%"></i></div></td>' +
         '<td class="num">' + r.count + "</td>" +
