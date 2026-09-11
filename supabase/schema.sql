@@ -13,6 +13,12 @@
 --  and every ledger note are readable by anyone on the internet who finds the
 --  URL. Do not put anything in a note you would not put on a whiteboard.
 --
+--  `fines.booked_by` records who issued a fine, and it is an HONOUR SYSTEM:
+--  there is no login, so the database cannot tell whether the name attached to
+--  a booking is really the person who typed it. Treat it as a signature on a
+--  whiteboard, not as an audit trail. What it is good for is attribution and
+--  the referees' leaderboard; what it is not good for is settling an argument.
+--
 --  What the policies below still prevent:
 --    · editing history      — there is no UPDATE policy at all
 --    · wiping the board     — a fine can only be deleted within 10 minutes of
@@ -41,6 +47,7 @@ create table if not exists public.players (
 create table if not exists public.fines (
   id         uuid primary key default gen_random_uuid(),
   who        text not null references public.players(id) on delete cascade,
+  booked_by  text references public.players(id) on delete set null,
   what       text not null,
   note       text not null default '',
   at         timestamptz not null default now(),
@@ -49,6 +56,20 @@ create table if not exists public.fines (
   constraint fines_what_sane check (char_length(what) between 1 and 60),
   constraint fines_note_sane check (char_length(note) <= 90)
 );
+
+-- `booked_by` arrived mid-season, so this brings an existing board up to date.
+-- (`create table if not exists` above does nothing to a table that already
+-- exists, hence the separate alter.)
+--
+-- Nullable on purpose, and it has to stay that way: the fines logged before
+-- the honour system existed have nobody's name against them, and backfilling
+-- a guess would be inventing history on an append-only ledger. The form
+-- requires a name for everything new; the board renders the old ones without.
+--
+-- `on delete set null` rather than the `cascade` used by `who`: retiring a
+-- colleague should forget that they issued a fine, not erase the fine itself.
+alter table public.fines
+  add column if not exists booked_by text references public.players(id) on delete set null;
 
 create index if not exists fines_at_idx on public.fines (at desc);
 

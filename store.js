@@ -54,18 +54,25 @@ var OffsideStore = (function () {
       });
     },
 
-    /** The whole ledger. Timestamps come back as millis, as before. */
+    /**
+     * The whole ledger. Timestamps come back as millis, as before.
+     *
+     * `by` is the colleague who logged the fine. It is null for anything
+     * logged before the honour system existed, so every caller has to cope
+     * with not knowing.
+     */
     fines: async function () {
       var rows = unwrap(
         await db()
           .from("fines")
-          .select("id,who,what,note,at")
+          .select("id,who,booked_by,what,note,at")
           .order("at", { ascending: false })
       );
       return rows.map(function (r) {
         return {
           id: r.id,
           who: r.who,
+          by: r.booked_by || null,
           what: r.what,
           note: r.note || "",
           at: new Date(r.at).getTime(),
@@ -73,16 +80,34 @@ var OffsideStore = (function () {
       });
     },
 
-    /** Log an offence. Returns the row the database actually stored. */
-    addFine: async function (who, what, note) {
+    /**
+     * Log an offence. Returns the row the database actually stored.
+     *
+     * Takes an object rather than four positional strings, because `who` and
+     * `by` are both player ids and swapping them silently would fine the
+     * wrong colleague.
+     */
+    addFine: async function (fine) {
       var rows = unwrap(
         await db()
           .from("fines")
-          .insert({ who: who, what: what, note: note || "" })
-          .select("id,who,what,note,at")
+          .insert({
+            who: fine.who,
+            booked_by: fine.by,
+            what: fine.what,
+            note: fine.note || "",
+          })
+          .select("id,who,booked_by,what,note,at")
       );
       var r = rows[0];
-      return { id: r.id, who: r.who, what: r.what, note: r.note || "", at: new Date(r.at).getTime() };
+      return {
+        id: r.id,
+        who: r.who,
+        by: r.booked_by || null,
+        what: r.what,
+        note: r.note || "",
+        at: new Date(r.at).getTime(),
+      };
     },
 
     /**

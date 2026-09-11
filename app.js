@@ -101,6 +101,33 @@
     return rows;
   }
 
+  /**
+   * Who has handed out the most fines.
+   *
+   * Only counts bookings we can attribute to somebody still on the squad:
+   * fines logged before the honour system have no name against them, and a
+   * retired colleague is no longer on the board to rank. Both are surfaced
+   * as a footnote rather than silently vanishing.
+   */
+  function refTally() {
+    var byRef = {};
+
+    fines.forEach(function (f) {
+      if (!f.by) return;
+      var emp = byId(EMPLOYEES, f.by);
+      if (!emp) return;
+      if (!byRef[f.by]) byRef[f.by] = { emp: emp, count: 0, total: 0 };
+      byRef[f.by].count += 1;
+      byRef[f.by].total += byId(INFRACTIONS, f.what).fine;
+    });
+
+    var rows = Object.keys(byRef).map(function (k) { return byRef[k]; });
+    rows.sort(function (a, b) {
+      return b.count - a.count || b.total - a.total || a.emp.name.localeCompare(b.emp.name, "nb");
+    });
+    return rows;
+  }
+
   var sortMode = "total";
 
   function sorted(rows) {
@@ -191,6 +218,41 @@
     }).join("");
   }
 
+  function renderRefs() {
+    var rows = refTally();
+    var top = rows.slice(0, 3);
+    var places = ["1st", "2nd", "3rd"];
+
+    $("#refs-list").innerHTML = top.length
+      ? top.map(function (r, i) {
+          return '<li class="ref">' +
+            '<span class="ref__place">' + places[i] + "</span>" +
+            avatar(r.emp) +
+            '<span class="ref__name">' + esc(r.emp.name) + "</span>" +
+            '<span class="ref__tally">' +
+              "<b>" + r.count + (r.count === 1 ? " fine" : " fines") + "</b>" +
+              "<i>" + kr(r.total) + " issued</i>" +
+            "</span></li>";
+        }).join("")
+      : '<li class="refs__empty">Nobody has signed for a booking yet. ' +
+        "Whoever files the next fine takes top spot.</li>";
+
+    // Anything we could not attribute, said out loud rather than quietly
+    // dropped. Covers both cases: logged before the honour system existed, or
+    // booked by someone since retired from the squad.
+    var orphans = fines.filter(function (f) {
+      return !f.by || !byId(EMPLOYEES, f.by);
+    }).length;
+
+    var foot = $("#refs-foot");
+    foot.hidden = !orphans;
+    if (orphans) {
+      foot.textContent = orphans === 1
+        ? "One fine cannot be credited to anyone on the current squad, so it is not counted here."
+        : orphans + " fines cannot be credited to anyone on the current squad, so they are not counted here.";
+    }
+  }
+
   function renderBoard(rows) {
     var pot = rows.reduce(function (s, r) { return s + r.total; }, 0) || 1;
     var max = rows.reduce(function (m, r) { return Math.max(m, r.total); }, 0) || 1;
@@ -256,10 +318,18 @@
         ? '<button class="feed__undo" data-undo="' + esc(f.id) +
           '" title="Rescind this fine">Undo</button>'
         : "";
+
+      // Older entries predate the honour system and simply have no referee.
+      var ref = f.by ? byId(EMPLOYEES, f.by) : null;
+      var byLine = "";
+      if (ref && ref.id === f.who) byLine = '<p class="feed__by">Owned up voluntarily</p>';
+      else if (ref) byLine = '<p class="feed__by">Booked by ' + esc(ref.name) + "</p>";
+
       return '<div class="feed__item">' + avatar(emp) +
         '<div class="feed__body">' +
           "<p><b>" + esc(emp.name) + "</b> — " + esc(inf.icon + " " + inf.name) + "</p>" +
           (f.note ? '<p class="feed__note">"' + esc(f.note) + '"</p>' : "") +
+          byLine +
         "</div>" +
         '<span class="feed__amount">' + kr(inf.fine) + "</span>" +
         '<span class="feed__time">' + timeAgo(f.at) + undo + "</span>" +
@@ -272,6 +342,7 @@
     renderKitty(rows);
     renderStats(rows);
     renderPodium(rows);
+    renderRefs();
     renderBoard(rows);
     renderRulebook();
     renderFeed();
@@ -279,11 +350,35 @@
 
   /* ---------------- form ---------------- */
 
+  /**
+   * Who is sitting at this browser. Remembered locally so nobody has to
+   * re-pick their own name every time — it is a convenience, not a claim of
+   * identity, and it never leaves this device.
+   */
+  var ME_KEY = "offside.bookedBy";
+
+  function rememberedMe() {
+    try { return window.localStorage.getItem(ME_KEY); } catch (e) { return null; }
+  }
+  function rememberMe(id) {
+    try { window.localStorage.setItem(ME_KEY, id); } catch (e) { /* private mode; no matter */ }
+  }
+
   function fillSelects() {
-    $("#f-who").innerHTML = EMPLOYEES.slice()
+    var squad = EMPLOYEES.slice()
       .sort(function (a, b) { return a.name.localeCompare(b.name, "nb"); })
       .map(function (e) { return '<option value="' + e.id + '">' + esc(e.name) + "</option>"; })
       .join("");
+
+    $("#f-who").innerHTML = squad;
+
+    // Deliberately starts blank: booking a fine should be a conscious choice,
+    // not whoever happens to sort first alphabetically.
+    $("#f-by").innerHTML =
+      '<option value="" disabled selected>Choose your name…</option>' + squad;
+
+    var me = rememberedMe();
+    if (me && byId(EMPLOYEES, me)) $("#f-by").value = me;
 
     $("#f-what").innerHTML = INFRACTIONS.slice()
       .sort(function (a, b) { return a.fine - b.fine; })
@@ -295,8 +390,18 @@
   function updatePreview() {
     var inf = byId(INFRACTIONS, $("#f-what").value);
     var emp = byId(EMPLOYEES, $("#f-who").value);
+    var ref = byId(EMPLOYEES, $("#f-by").value);
     if (!inf || !emp) return;
-    $("#fine-preview").textContent = emp.name + " will be charged " + kr(inf.fine) + ".";
+
+    if (!ref) {
+      $("#fine-preview").textContent = "Say who is booking this first.";
+    } else if (ref.id === emp.id) {
+      $("#fine-preview").textContent =
+        "Owning up — " + emp.name + " will be charged " + kr(inf.fine) + ".";
+    } else {
+      $("#fine-preview").textContent =
+        ref.name + " books " + emp.name + " for " + kr(inf.fine) + ".";
+    }
   }
 
   var toastTimer;
@@ -347,6 +452,10 @@
   /* ---------------- wiring ---------------- */
 
   function wireForm() {
+    $("#f-by").addEventListener("change", function () {
+      if ($("#f-by").value) rememberMe($("#f-by").value);
+      updatePreview();
+    });
     $("#f-who").addEventListener("change", updatePreview);
     $("#f-what").addEventListener("change", updatePreview);
 
@@ -358,17 +467,32 @@
       var inf = byId(INFRACTIONS, what);
       if (!emp || !inf) return;
 
+      // No login to fall back on, so the one thing we do insist on is a name.
+      var ref = byId(EMPLOYEES, $("#f-by").value);
+      if (!ref) {
+        toast("Say who is booking this first.");
+        $("#f-by").focus();
+        return;
+      }
+
       var btn = $("#report-form button[type=submit]");
       btn.disabled = true;
       btn.textContent = "Filing…";
 
       try {
-        var row = await OffsideStore.addFine(who, what, $("#f-note").value.trim());
+        var row = await OffsideStore.addFine({
+          by: ref.id,
+          who: who,
+          what: what,
+          note: $("#f-note").value.trim(),
+        });
         // The realtime event will also land; only add it once.
         if (!fines.some(function (f) { return f.id === row.id; })) fines.push(row);
         render();
         $("#f-note").value = "";
-        toast(emp.name + " fined " + kr(inf.fine) + " for " + inf.name.toLowerCase() + ".");
+        toast(ref.id === emp.id
+          ? emp.name + " owned up — " + kr(inf.fine) + " for " + inf.name.toLowerCase() + "."
+          : ref.name + " booked " + emp.name + " — " + kr(inf.fine) + " for " + inf.name.toLowerCase() + ".");
       } catch (err) {
         toast("That fine did not save — " + reason(err));
       } finally {

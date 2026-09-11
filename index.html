@@ -100,6 +100,15 @@
 
       <div class="podium" id="podium"></div>
 
+      <div class="refs" aria-labelledby="refs-title">
+        <div class="refs__head">
+          <strong id="refs-title">Busiest referees</strong>
+          <span>Who has handed out the most fines</span>
+        </div>
+        <ol class="refs__list" id="refs-list"></ol>
+        <p class="refs__foot" id="refs-foot" hidden></p>
+      </div>
+
       <div class="board">
         <div class="board__toolbar">
           <strong>Full standings</strong>
@@ -152,10 +161,15 @@
       <div class="split">
         <form class="report" id="report-form" novalidate>
           <div class="field">
+            <label for="f-by">Who is booking this?</label>
+            <select id="f-by" name="booked_by" required></select>
+            <span class="field__hint">Honour system. Nobody checks, so put your own name.</span>
+          </div>
+          <div class="field">
             <label for="f-who">Offender</label>
             <select id="f-who" name="who" required></select>
           </div>
-          <div class="field">
+          <div class="field field--full">
             <label for="f-what">Infraction</label>
             <select id="f-what" name="what" required></select>
           </div>
