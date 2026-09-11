@@ -41,11 +41,35 @@ until you catch up.
 
 SQL Editor → paste `supabase/schema.sql` → Run → then push.
 
+### Bump the cache buster when you change a script
+
+The script and stylesheet tags in `index.html` carry a `?v=` date:
+
+```html
+<link rel="stylesheet" href="styles.css?v=2026-09-11">
+<script src="app.js?v=2026-09-11"></script>
+```
+
+**Change `app.js`, `store.js`, `data.js`, `config.js` or `styles.css`? Bump
+that date in `index.html` in the same commit.**
+
+Without it the site half-updates. `index.html` and the scripts are separate
+files with separate cache lifetimes, so a colleague who has the old `app.js`
+still in their browser gets the new page wired to the old logic — new markup
+the old script has never heard of, silently left blank. Changing the URL makes
+it a different resource, so the browser has no choice but to fetch it.
+
+If someone is looking at a stale board right now, a hard reload
+(<kbd>Cmd/Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>) fixes them
+immediately.
+
 ## Who booked it
 
 Filing a fine starts by picking your own name, and that name is stored next to
-the fine. The ledger shows it, and the **Busiest referees** block ranks the
-three people who have handed out the most.
+the fine. The ledger shows it, the **Busiest referees** block ranks the three
+people who have handed out the most, and the full standings carry a **Booked
+by** column — the referee on that person's *most recent* fine, so it changes as
+the season goes on rather than accumulating.
 
 This is an **honour system**. There is no login, so nothing stops you putting
 someone else's name on a booking — the database cannot tell the difference. It
@@ -97,7 +121,7 @@ while testing is a real fine on everyone's board.**
 | **Stats** | Most-broken rule, average per head, clean sheets, last 7 days |
 | **Podium** | Top three offenders, with earned titles |
 | **Referees** | Top three by fines handed out — who is doing the policing |
-| **Leaderboard** | Full standings — sortable by kroner, offence count or A–Z |
+| **Leaderboard** | Full standings — sortable by kroner, offence count or A–Z, showing each player's most recent offence and who booked it |
 | **Rule book** | 12 infractions across three severity tiers, kr 20–75 |
 | **Report** | Say who you are, then who is getting booked and what for |
 | **Ledger** | The last fifteen entries, each showing its referee, undoable for ten minutes |
