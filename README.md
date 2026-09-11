@@ -113,6 +113,29 @@ the Supabase request from a `file://` page. Use the server above.
 Local and deployed both talk to the same Supabase project, so **a fine you log
 while testing is a real fine on everyone's board.**
 
+## Tests
+
+```bash
+node test/run.js
+```
+
+No dependencies, no framework, nothing to install — if you have Node, it runs.
+
+There is no build step here, so the tests don't get one either. They load the
+real `app.js` and `store.js` into a `vm` context with a hand-rolled stub DOM
+and a stub Supabase client, which means what they exercise is the same file
+the browser gets, not a module-shaped copy of it. They cover the scoring and
+rendering, the report form, the undo path, and the mapping between database
+columns and the shapes the app expects. What they can't tell you is whether
+the page *looks* right — load it in a browser for that.
+
+Two of the fixtures look odd and are meant to. The ledger is deliberately not
+in time order, because a realtime insert arrives on the end of the array and
+anything meaning "most recent" has to compare timestamps rather than take the
+first row it matches. And one player's most *frequent* infraction differs from
+their most *recent* one, so the standings column can't pass by accident.
+Please keep both properties if you edit the fixtures.
+
 ## What's in it
 
 | Section | What it does |
@@ -189,6 +212,9 @@ store.js                everything that talks to Supabase
 app.js                  scoring, rendering, live updates
 supabase/schema.sql     tables and security policies      ← run this once
 supabase/seed.local.sql squad + starting ledger (gitignored, has real names)
+test/run.js             runs everything below              ← node test/run.js
+test/harness.js         stub DOM + Supabase client
+test/*.test.js          one file per area
 ```
 
 ---
