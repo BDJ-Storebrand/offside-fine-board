@@ -113,9 +113,21 @@ var OffsideStore = (function () {
     /**
      * Take back a misfire. The database only permits this within ten minutes
      * of the entry being logged, so a stranger cannot clear the season.
+     *
+     * A refused delete is NOT an error. The policy is a row filter, so once
+     * the window has closed Postgres simply matches no rows and reports
+     * success — which would have us tell the caller the fine was rescinded
+     * while it sat there in the table, waiting to reappear on the next
+     * refresh. `.select()` makes the deleted rows come back so we can tell
+     * "removed" from "silently declined" and throw on the latter.
      */
     removeFine: async function (id) {
-      unwrap(await db().from("fines").delete().eq("id", id));
+      var rows = unwrap(
+        await db().from("fines").delete().eq("id", id).select("id")
+      );
+      if (!rows || !rows.length) {
+        throw new Error("the ten-minute window for taking that back has closed");
+      }
     },
 
     /**
