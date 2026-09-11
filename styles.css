@@ -223,6 +223,43 @@ table { border-collapse: collapse; width: 100%; }
 /* =========================================================
    Leaderboard table
    ========================================================= */
+/* =========================================================
+   Referees — who hands out the most fines
+   ========================================================= */
+.refs {
+  background: var(--white); border-radius: var(--r-lg);
+  border: 1px solid var(--line-soft); box-shadow: var(--shadow-sm);
+  padding: 24px 26px; margin-bottom: 30px;
+}
+.refs__head {
+  display: flex; align-items: baseline; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 18px;
+}
+.refs__head strong { font-family: var(--display); font-size: 19px; }
+.refs__head span { font-size: 13.5px; color: var(--ink-45); }
+.refs__list {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+}
+.ref {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--cream); border-radius: var(--r-sm); padding: 14px 16px;
+}
+.ref__place {
+  font-family: var(--display); font-weight: 700; font-size: 14px;
+  color: var(--red); flex: none;
+}
+.ref .avatar { width: 38px; height: 38px; font-size: 15px; margin: 0; }
+.ref__name {
+  font-weight: 600; font-size: 15.5px; margin-right: auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ref__tally { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
+.ref__tally b { font-family: var(--display); font-weight: 700; font-size: 15px; white-space: nowrap; }
+.ref__tally i { font-style: normal; font-size: 12.5px; color: var(--ink-45); white-space: nowrap; }
+.refs__empty { grid-column: 1 / -1; font-size: 14.5px; color: var(--ink-45); }
+.refs__foot { margin-top: 14px; font-size: 12.5px; color: var(--ink-45); }
+
 .board {
   background: var(--white); border-radius: var(--r-lg); overflow: hidden;
   box-shadow: var(--shadow-sm); border: 1px solid var(--line-soft);
@@ -346,6 +383,7 @@ tbody tr:hover { background: var(--blush); }
 .feed__body b { font-weight: 600; }
 .feed__body p { font-size: 15px; }
 .feed__note { font-size: 13.5px; color: var(--ink-45); font-style: italic; }
+.feed__by { font-size: 12.5px; color: var(--ink-45); margin-top: 2px; }
 .feed__amount { font-family: var(--display); font-weight: 700; color: var(--red); font-size: 18px; white-space: nowrap; }
 .feed__time { font-size: 12.5px; color: var(--ink-45); white-space: nowrap; min-width: 74px; text-align: right; }
 
@@ -455,6 +493,8 @@ tbody tr:hover { background: var(--blush); }
   .mainnav { display: none; }
   .podium { grid-template-columns: 1fr; align-items: stretch; }
   .pod--1 { order: -1; }
+  .refs { padding: 20px 18px; }
+  .refs__list { grid-template-columns: 1fr; }
   .col-hide { display: none; }
   .report { padding: 26px 22px; }
   .panel { padding: 24px 20px; }

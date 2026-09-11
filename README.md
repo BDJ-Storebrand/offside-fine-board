@@ -30,6 +30,33 @@ You need to do this once.
 
 Until step 4 is done the page loads but shows a banner telling you so.
 
+### Updating a board that already exists
+
+`supabase/schema.sql` is idempotent, so upgrading is just running it again —
+but **run it before you push**, not after. The site and the database deploy
+separately: GitHub Pages publishes the moment `main` moves, while the SQL is a
+manual step. Push first and the new code asks for a `booked_by` column that
+isn't there yet, and the board shows *"Cannot reach the board"* for everyone
+until you catch up.
+
+SQL Editor → paste `supabase/schema.sql` → Run → then push.
+
+## Who booked it
+
+Filing a fine starts by picking your own name, and that name is stored next to
+the fine. The ledger shows it, and the **Busiest referees** block ranks the
+three people who have handed out the most.
+
+This is an **honour system**. There is no login, so nothing stops you putting
+someone else's name on a booking — the database cannot tell the difference. It
+is a signature on a whiteboard, not an audit trail. Fines logged before this
+existed have no referee against them and are excluded from the referee
+standings, with a note under the block saying how many.
+
+Your own name is remembered in this browser's `localStorage` so you don't
+re-pick it every time. That never leaves your machine; it is a convenience,
+not a claim of identity.
+
 ## Who can see it
 
 **Anyone with the link.** There is no login. Names, running totals and every
@@ -69,10 +96,11 @@ while testing is a real fine on everyone's board.**
 | **Kitty** | Running total of everything collected this season |
 | **Stats** | Most-broken rule, average per head, clean sheets, last 7 days |
 | **Podium** | Top three offenders, with earned titles |
+| **Referees** | Top three by fines handed out — who is doing the policing |
 | **Leaderboard** | Full standings — sortable by kroner, offence count or A–Z |
 | **Rule book** | 12 infractions across three severity tiers, kr 20–75 |
-| **Report** | Issue a fine; every open board updates at once |
-| **Ledger** | The last fifteen entries, each undoable for ten minutes |
+| **Report** | Say who you are, then who is getting booked and what for |
+| **Ledger** | The last fifteen entries, each showing its referee, undoable for ten minutes |
 
 The footer shows a live/offline indicator for the connection to the board.
 
